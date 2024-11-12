@@ -20,6 +20,60 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class Device {
+  final String name;
+  final String ipAddress;
+  final String macAddress;
+  final String type; // Example: "Smartphone", "Smart TV", "Laptop"
+  final bool isOnline;
+
+  Device({
+    required this.name,
+    required this.ipAddress,
+    required this.macAddress,
+    required this.type,
+    required this.isOnline,
+  });
+}
+
+List<Device> mockDevices = [
+  Device(
+    name: "Samsung Galaxy S21",
+    ipAddress: "192.168.1.2",
+    macAddress: "00:14:22:01:23:45",
+    type: "Smartphone",
+    isOnline: true,
+  ),
+  Device(
+    name: "Dell XPS 13",
+    ipAddress: "192.168.1.3",
+    macAddress: "00:16:36:12:56:78",
+    type: "Laptop",
+    isOnline: true,
+  ),
+  Device(
+    name: "Google Nest Hub",
+    ipAddress: "192.168.1.4",
+    macAddress: "00:1A:11:FA:67:89",
+    type: "Smart Display",
+    isOnline: false,
+  ),
+  Device(
+    name: "Sony Bravia TV",
+    ipAddress: "192.168.1.5",
+    macAddress: "00:22:68:AB:CD:EF",
+    type: "Smart TV",
+    isOnline: true,
+  ),
+  Device(
+    name: "Apple Watch",
+    ipAddress: "192.168.1.6",
+    macAddress: "00:25:96:89:AB:12",
+    type: "Wearable",
+    isOnline: false,
+  ),
+];
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -150,7 +204,10 @@ class _HomePageState extends State<HomePage> {
               icon: const Icon(Icons.list),
               tooltip: 'Results',
               onPressed: () {
-                // TODO: Navigate to results screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ResultsPage()),
+                );
               },
             ),
           ],
@@ -397,6 +454,35 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class ResultsPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Scan Results'),
+      ),
+      body: ListView.builder(
+        itemCount: mockDevices.length,
+        itemBuilder: (context, index) {
+          final Device device = mockDevices[index];
+          return Card(
+            child: ListTile(
+              leading: Icon(
+                device.isOnline ? Icons.wifi : Icons.wifi_off,
+                color: device.isOnline ? Colors.green : Colors.red,
+              ),
+              title: Text(device.name),
+              subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
+              isThreeLine: true,
+              trailing: Icon(Icons.arrow_forward_ios),
+            ),
+          );
+        },
+      ),
     );
   }
 }
