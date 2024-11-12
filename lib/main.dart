@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
 }
 
 class Device {
-  final String name;
+  String name;
   final String ipAddress;
   final String macAddress;
   final String type; // Example: "Smartphone", "Smart TV", "Laptop"
@@ -71,6 +71,38 @@ List<Device> mockDevices = [
     macAddress: "00:25:96:89:AB:12",
     type: "Wearable",
     isOnline: false,
+  ),
+  // New router device
+  Device(
+    name: "Netgear Nighthawk Router",
+    ipAddress: "192.168.1.1",
+    macAddress: "00:1B:44:11:3A:B7",
+    type: "Router",
+    isOnline: true,
+  ),
+  // New smartphone device
+  Device(
+    name: "iPhone 14 Pro",
+    ipAddress: "192.168.1.7",
+    macAddress: "00:1E:DC:9A:3B:65",
+    type: "Smartphone",
+    isOnline: true,
+  ),
+  // New laptop device
+  Device(
+    name: "MacBook Air M2",
+    ipAddress: "192.168.1.8",
+    macAddress: "00:17:88:6A:4B:33",
+    type: "Laptop",
+    isOnline: false,
+  ),
+  // Unrecognized device
+  Device(
+    name: "Unknown Device",
+    ipAddress: "192.168.1.9",
+    macAddress: "00:99:23:AF:54:78",
+    type: "Unrecognized",
+    isOnline: true,
   ),
 ];
 
@@ -459,29 +491,177 @@ class _SettingsPageState extends State<SettingsPage> {
 }
 
 class ResultsPage extends StatelessWidget {
+  const ResultsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    List<Device> onlineDevices = mockDevices.where((device) => device.isOnline).toList();
+    List<Device> offlineDevices = mockDevices.where((device) => !device.isOnline).toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Scan Results'),
+      ),
+      body: ListView(
+        children: [
+          if (onlineDevices.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text(
+                'Online Devices',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ...onlineDevices.map((device) => ListTile(
+                leading: Icon(
+                  Icons.wifi,
+                  color: Colors.green,
+                ),
+                title: Text(device.name),
+                subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
+                isThreeLine: true,
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DeviceDetailPage(device: device),
+                    ),
+                  );
+                },
+              )),
+          const Divider(),
+          if (offlineDevices.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text(
+                'Offline Devices',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ...offlineDevices.map((device) => ListTile(
+                leading: Icon(
+                  Icons.wifi_off,
+                  color: Colors.red,
+                ),
+                title: Text(device.name),
+                subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
+                isThreeLine: true,
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DeviceDetailPage(device: device),
+                    ),
+                  );
+                },
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+class DeviceDetailPage extends StatefulWidget {
+  final Device device;
+
+  const DeviceDetailPage({super.key, required this.device});
+
+  @override
+  _DeviceDetailPageState createState() => _DeviceDetailPageState();
+}
+
+class _DeviceDetailPageState extends State<DeviceDetailPage> {
+  late TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the text controller with the current device name
+    _nameController = TextEditingController(text: widget.device.name);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _saveDeviceName() {
+    setState(() {
+      widget.device.name = _nameController.text;
+    });
+
+    // Show a confirmation message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Device name updated!')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Scan Results'),
+        title: Text(widget.device.name),
       ),
-      body: ListView.builder(
-        itemCount: mockDevices.length,
-        itemBuilder: (context, index) {
-          final Device device = mockDevices[index];
-          return Card(
-            child: ListTile(
-              leading: Icon(
-                device.isOnline ? Icons.wifi : Icons.wifi_off,
-                color: device.isOnline ? Colors.green : Colors.red,
-              ),
-              title: Text(device.name),
-              subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
-              isThreeLine: true,
-              trailing: Icon(Icons.arrow_forward_ios),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Device Type:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          );
-        },
+            Text(
+              widget.device.type,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+
+            const Text(
+              'Change Device Name:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+
+            // Text field to edit the device name
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Device Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Save button to update the name
+            ElevatedButton(
+              onPressed: _saveDeviceName,
+              child: const Text('Save'),
+            ),
+            const Divider(height: 32),
+
+            Text(
+              'IP Address: ${widget.device.ipAddress}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'MAC Address: ${widget.device.macAddress}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Status: ${widget.device.isOnline ? "Online" : "Offline"}',
+              style: TextStyle(
+                fontSize: 16,
+                color: widget.device.isOnline ? Colors.green : Colors.red,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -530,7 +710,7 @@ class AboutPage extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
-              'Domenic Lo Iacono and Kyri Christensen',
+              'Domenic Lo Iacono and Kyri Lea',
               style: TextStyle(fontSize: 16),
             ),
           ],
