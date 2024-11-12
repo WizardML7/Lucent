@@ -116,22 +116,24 @@ class HomeWidget extends StatefulWidget {
 }
 
 class _HomeWidgetState extends State<HomeWidget> {
-  bool _useGraphView = false;
+  bool _isGraphView = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
+    _loadViewPreference();
   }
 
-  Future<void> _loadPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+  void _loadViewPreference() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _useGraphView = prefs.getBool('useGraphView') ?? false;
+      _isGraphView = prefs.getBool('isGraphView') ?? false;
     });
   }
+
   @override
   Widget build(BuildContext context) {
+    _loadViewPreference();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -244,15 +246,20 @@ class _HomeWidgetState extends State<HomeWidget> {
             IconButton(
               icon: const Icon(Icons.list),
               tooltip: 'Results',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => _useGraphView
-                        ? const ResultsGraphPage()
-                        : const ResultsPage(),
-                  ),
-                );
+              onPressed: () async {
+                _loadViewPreference();
+                // Navigate to the appropriate ResultsPage based on preference
+                if (_isGraphView) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ResultsGraphPage()),
+                  );
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ResultsPage()),
+                  );
+                }
               },
             ),
           ],
@@ -384,26 +391,31 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _bluetoothAccess = true;       // Bluetooth toggle state (Privacy)
   bool _darkMode = false;             // Theme toggle state
   //String _selectedLanguage = 'English';  // Language preference state
-  bool _useGraphView = false;         // Persistent state for results view
+  bool _isGraphView = false;         // Persistent state for results view
 
   // final List<String> _languages = ['English', 'Spanish', 'French', 'German'];
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
+    _loadViewPreference();
   }
 
-  Future<void> _loadPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+  // Load view preference from shared preferences
+  void _loadViewPreference() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _useGraphView = prefs.getBool('useGraphView') ?? false;
+      _isGraphView = prefs.getBool('isGraphView') ?? false;
     });
   }
 
-  Future<void> _savePreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('useGraphView', _useGraphView);
+  // Toggle view preference and save it
+  void _toggleViewPreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isGraphView = value;
+    });
+    await prefs.setBool('isGraphView', _isGraphView);
   }
 
   @override
@@ -468,16 +480,12 @@ class _SettingsPageState extends State<SettingsPage> {
             const Divider(),
 
             // View Preference
-            const Text('Results View Preference',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Choose Results View:', style: TextStyle(fontSize: 18)),
             SwitchListTile(
-              title: const Text('Use Graph View'),
-              value: _useGraphView,
-              onChanged: (bool value) {
-                setState(() {
-                  _useGraphView = value;
-                  _savePreferences(); // Save preference when toggled
-                });
+              title: const Text('Graph View'),
+              value: _isGraphView,
+              onChanged: (value) {
+                _toggleViewPreference(value);
               },
             ),
           ],
