@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +17,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.yellow),
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: const HomeWidget(),
     );
   }
 }
@@ -106,14 +108,28 @@ List<Device> mockDevices = [
   ),
 ];
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeWidget extends StatefulWidget {
+  const HomeWidget({Key? key}) : super(key: key);
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  _HomeWidgetState createState() => _HomeWidgetState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomeWidgetState extends State<HomeWidget> {
+  bool _useGraphView = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _useGraphView = prefs.getBool('useGraphView') ?? false;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,7 +247,11 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ResultsPage()),
+                  MaterialPageRoute(
+                    builder: (context) => _useGraphView
+                        ? const ResultsGraphPage()
+                        : const ResultsPage(),
+                  ),
                 );
               },
             ),
@@ -241,6 +261,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+
 
 //Scan options widget
 class ScanOptionsPage extends StatefulWidget {
@@ -350,7 +372,7 @@ class _ScanOptionsPageState extends State<ScanOptionsPage> {
 
 //Settings widget
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({Key? key}) : super(key: key);
 
   @override
   _SettingsPageState createState() => _SettingsPageState();
@@ -361,10 +383,28 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _locationAccess = false;       // Location toggle state (Privacy)
   bool _bluetoothAccess = true;       // Bluetooth toggle state (Privacy)
   bool _darkMode = false;             // Theme toggle state
-  String _selectedLanguage = 'English';  // Language preference state
+  //String _selectedLanguage = 'English';  // Language preference state
+  bool _useGraphView = false;         // Persistent state for results view
 
-  // List of supported languages
-  final List<String> _languages = ['English', 'Spanish', 'French', 'German'];
+  // final List<String> _languages = ['English', 'Spanish', 'French', 'German'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _useGraphView = prefs.getBool('useGraphView') ?? false;
+    });
+  }
+
+  Future<void> _savePreferences() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('useGraphView', _useGraphView);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -427,25 +467,17 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const Divider(),
 
-            // Language Preferences
-            const Text('Language Preferences',
+            // View Preference
+            const Text('Results View Preference',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ListTile(
-              title: const Text('Select Language'),
-              subtitle: Text(_selectedLanguage),
-              trailing: const Icon(Icons.arrow_forward),
-              onTap: () {
-                _showLanguageDialog();
-              },
-            ),
-            const Divider(),
-
-            // Other Settings Example (e.g., clear history)
-            ListTile(
-              title: const Text('Clear Scan History'),
-              trailing: const Icon(Icons.delete),
-              onTap: () {
-                // TODO: Implement Clear Scan History functionality
+            SwitchListTile(
+              title: const Text('Use Graph View'),
+              value: _useGraphView,
+              onChanged: (bool value) {
+                setState(() {
+                  _useGraphView = value;
+                  _savePreferences(); // Save preference when toggled
+                });
               },
             ),
           ],
@@ -453,41 +485,15 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
-  // Function to show the language selection dialog
-  void _showLanguageDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Select Language'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: _languages.map((language) {
-              return RadioListTile<String>(
-                title: Text(language),
-                value: language,
-                groupValue: _selectedLanguage,
-                onChanged: (String? value) {
-                  setState(() {
-                    _selectedLanguage = value!;
-                  });
-                  Navigator.of(context).pop(); // Close the dialog after selection
-                },
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-  }
 }
+
 
 class ResultsPage extends StatelessWidget {
   const ResultsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Separating devices into online and offline lists
     List<Device> onlineDevices = mockDevices.where((device) => device.isOnline).toList();
     List<Device> offlineDevices = mockDevices.where((device) => !device.isOnline).toList();
 
@@ -496,53 +502,26 @@ class ResultsPage extends StatelessWidget {
         title: const Text('Scan Results'),
       ),
       body: ListView(
-  children: [
-    if (onlineDevices.isNotEmpty)
-      const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text(
-          'Online Devices',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-      ),
-    ...onlineDevices.map((device) {
-            Icon deviceIcon;
-
+        children: [
+          // Online Devices Section
+          if (onlineDevices.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text(
+                'Online Devices',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          // List of Online Devices
+          ...onlineDevices.map((device) {
             // Determine the icon based on the device type
-            if (device.type == "Smartphone") {
-              deviceIcon = const Icon(Icons.smartphone, color: Colors.green);
-            } else if (device.type == "Laptop") {
-              deviceIcon = const Icon(Icons.laptop, color: Colors.green);
-            } else if (device.type == "Smart Display") {
-              deviceIcon = const Icon(Icons.smart_toy, color: Colors.green);
-            } else if (device.type == "Smart TV") {
-              deviceIcon = const Icon(Icons.tv, color: Colors.green);
-            } else if (device.type == "Wearable") {
-              deviceIcon = const Icon(Icons.watch, color: Colors.green);
-            } else if (device.type == "Router") {
-              deviceIcon = const Icon(Icons.router, color: Colors.green);
-            } else {
-              // For unrecognized devices
-              deviceIcon = const Icon(Icons.help, color: Colors.green); // Or another color like green or red
-            }
-
-            return ListTile(
-              leading: deviceIcon,
-              title: Text(device.name),
-              subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
-              isThreeLine: true,
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DeviceDetailPage(device: device),
-                  ),
-                );
-              },
-            );
+            Icon deviceIcon = _getDeviceIcon(device.type, isOnline: true);
+            return _buildDeviceTile(context, device, deviceIcon);
           }).toList(),
+          
           const Divider(),
+          
+          // Offline Devices Section
           if (offlineDevices.isNotEmpty)
             const Padding(
               padding: EdgeInsets.all(8.0),
@@ -551,47 +530,153 @@ class ResultsPage extends StatelessWidget {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
+          // List of Offline Devices
           ...offlineDevices.map((device) {
-            Icon deviceIcon;
-
-            // Determine the icon based on the device type
-            if (device.type == "Smartphone") {
-              deviceIcon = const Icon(Icons.smartphone, color: Colors.red);
-            } else if (device.type == "Laptop") {
-              deviceIcon = const Icon(Icons.laptop, color: Colors.red);
-            } else if (device.type == "Smart Display") {
-              deviceIcon = const Icon(Icons.smart_toy, color: Colors.red);
-            } else if (device.type == "Smart TV") {
-              deviceIcon = const Icon(Icons.tv, color: Colors.red);
-            } else if (device.type == "Wearable") {
-              deviceIcon = const Icon(Icons.watch, color: Colors.red);
-            } else if (device.type == "Router") {
-              deviceIcon = const Icon(Icons.router, color: Colors.red);
-            } else {
-              // For unrecognized devices
-              deviceIcon = const Icon(Icons.help, color: Colors.red);
-            }
-
-            return ListTile(
-              leading: deviceIcon,
-              title: Text(device.name),
-              subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
-              isThreeLine: true,
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DeviceDetailPage(device: device),
-                  ),
-                );
-              },
-            );
+            Icon deviceIcon = _getDeviceIcon(device.type, isOnline: false);
+            return _buildDeviceTile(context, device, deviceIcon);
           }).toList(),
         ],
       ),
     );
   }
+
+  // Helper method to build a ListTile for a device
+  ListTile _buildDeviceTile(BuildContext context, Device device, Icon deviceIcon) {
+    return ListTile(
+      leading: deviceIcon,
+      title: Text(device.name),
+      subtitle: Text(
+        '${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}',
+      ),
+      isThreeLine: true,
+      trailing: const Icon(Icons.arrow_forward_ios),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DeviceDetailPage(device: device),
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper method to determine the device icon based on type and status
+  Icon _getDeviceIcon(String deviceType, {required bool isOnline}) {
+    Color iconColor = isOnline ? Colors.green : Colors.red;
+
+    switch (deviceType) {
+      case "Smartphone":
+        return Icon(Icons.smartphone, color: iconColor);
+      case "Laptop":
+        return Icon(Icons.laptop, color: iconColor);
+      case "Smart Display":
+        return Icon(Icons.smart_toy, color: iconColor);
+      case "Smart TV":
+        return Icon(Icons.tv, color: iconColor);
+      case "Wearable":
+        return Icon(Icons.watch, color: iconColor);
+      case "Router":
+        return Icon(Icons.router, color: iconColor);
+      default:
+        return Icon(Icons.help, color: iconColor);
+    }
+  }
+}
+
+// #################################################
+
+
+class ResultsGraphPage extends StatelessWidget {
+  const ResultsGraphPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Graph View of Devices'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Flow(
+            delegate: DeviceFlowDelegate(),
+            children: mockDevices.map((device) {
+              // Determine the icon based on the device type
+              Icon deviceIcon = _getDeviceIcon(device.type, isOnline: device.isOnline);
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DeviceDetailPage(device: device),
+                    ),
+                  );
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    deviceIcon,
+                    const SizedBox(height: 5),
+                    Text(
+                      device.name,
+                      style: const TextStyle(fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method to determine the device icon based on type and status
+  Icon _getDeviceIcon(String deviceType, {required bool isOnline}) {
+    Color iconColor = isOnline ? Colors.green : Colors.red;
+
+    switch (deviceType) {
+      case "Smartphone":
+        return Icon(Icons.smartphone, size: 40, color: iconColor);
+      case "Laptop":
+        return Icon(Icons.laptop, size: 40, color: iconColor);
+      case "Smart Display":
+        return Icon(Icons.smart_toy, size: 40, color: iconColor);
+      case "Smart TV":
+        return Icon(Icons.tv, size: 40, color: iconColor);
+      case "Wearable":
+        return Icon(Icons.watch, size: 40, color: iconColor);
+      case "Router":
+        return Icon(Icons.router, size: 40, color: iconColor);
+      default:
+        return Icon(Icons.help, size: 40, color: iconColor);
+    }
+  }
+}
+
+// Custom FlowDelegate to position device icons
+class DeviceFlowDelegate extends FlowDelegate {
+  final Random random = Random();
+
+  @override
+  void paintChildren(FlowPaintingContext context) {
+    for (int i = 0; i < context.childCount; i++) {
+      // Generate random positions for each child within the available space
+      double x = random.nextDouble() * (context.size.width - 50);
+      double y = random.nextDouble() * (context.size.height - 50);
+
+      context.paintChild(
+        i,
+        transform: Matrix4.translationValues(x, y, 0),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant FlowDelegate oldDelegate) => false;
 }
 
 class DeviceDetailPage extends StatefulWidget {
