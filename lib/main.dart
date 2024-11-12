@@ -503,62 +503,72 @@ class ResultsPage extends StatelessWidget {
         title: const Text('Scan Results'),
       ),
       body: ListView(
-        children: [
-          if (onlineDevices.isNotEmpty)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Text(
-                'Online Devices',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ...onlineDevices.map((device) => ListTile(
-                leading: Icon(
+  children: [
+    if (onlineDevices.isNotEmpty)
+      const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: Text(
+          'Online Devices',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    ...onlineDevices.map((device) => ListTile(
+          leading: device.type == "Unrecognized"
+              ? Icon(
+                  Icons.help,
+                  color: Colors.green,
+                )
+              : Icon(
                   Icons.wifi,
                   color: Colors.green,
                 ),
-                title: Text(device.name),
-                subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
-                isThreeLine: true,
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DeviceDetailPage(device: device),
-                    ),
-                  );
-                },
-              )),
-          const Divider(),
-          if (offlineDevices.isNotEmpty)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Text(
-                'Offline Devices',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          title: Text(device.name),
+          subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
+          isThreeLine: true,
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DeviceDetailPage(device: device),
               ),
-            ),
-          ...offlineDevices.map((device) => ListTile(
-                leading: Icon(
+            );
+          },
+        )),
+    const Divider(),
+    if (offlineDevices.isNotEmpty)
+      const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: Text(
+          'Offline Devices',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    ...offlineDevices.map((device) => ListTile(
+          leading: device.type == "Unrecognized"
+              ? Icon(
+                  Icons.help,
+                  color: Colors.red,
+                )
+              : Icon(
                   Icons.wifi_off,
                   color: Colors.red,
                 ),
-                title: Text(device.name),
-                subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
-                isThreeLine: true,
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DeviceDetailPage(device: device),
-                    ),
-                  );
-                },
-              )),
-        ],
-      ),
+          title: Text(device.name),
+          subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
+          isThreeLine: true,
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DeviceDetailPage(device: device),
+              ),
+            );
+          },
+        )),
+  ],
+)
     );
   }
 }
