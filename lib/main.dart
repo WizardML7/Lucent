@@ -148,13 +148,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Scan History'),
-              onTap: () {
-                // TODO: Navigate to Scan History screen
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.help),
               title: const Text('Help and Support'),
               onTap: () {
@@ -512,63 +505,91 @@ class ResultsPage extends StatelessWidget {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
-    ...onlineDevices.map((device) => ListTile(
-          leading: device.type == "Unrecognized"
-              ? Icon(
-                  Icons.help,
-                  color: Colors.green,
-                )
-              : Icon(
-                  Icons.wifi,
-                  color: Colors.green,
-                ),
-          title: Text(device.name),
-          subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
-          isThreeLine: true,
-          trailing: const Icon(Icons.arrow_forward_ios),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DeviceDetailPage(device: device),
-              ),
+    ...onlineDevices.map((device) {
+            Icon deviceIcon;
+
+            // Determine the icon based on the device type
+            if (device.type == "Smartphone") {
+              deviceIcon = const Icon(Icons.smartphone, color: Colors.green);
+            } else if (device.type == "Laptop") {
+              deviceIcon = const Icon(Icons.laptop, color: Colors.green);
+            } else if (device.type == "Smart Display") {
+              deviceIcon = const Icon(Icons.smart_toy, color: Colors.green);
+            } else if (device.type == "Smart TV") {
+              deviceIcon = const Icon(Icons.tv, color: Colors.green);
+            } else if (device.type == "Wearable") {
+              deviceIcon = const Icon(Icons.watch, color: Colors.green);
+            } else if (device.type == "Router") {
+              deviceIcon = const Icon(Icons.router, color: Colors.green);
+            } else {
+              // For unrecognized devices
+              deviceIcon = const Icon(Icons.help, color: Colors.green); // Or another color like green or red
+            }
+
+            return ListTile(
+              leading: deviceIcon,
+              title: Text(device.name),
+              subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
+              isThreeLine: true,
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeviceDetailPage(device: device),
+                  ),
+                );
+              },
             );
-          },
-        )),
-    const Divider(),
-    if (offlineDevices.isNotEmpty)
-      const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text(
-          'Offline Devices',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+          }).toList(),
+          const Divider(),
+          if (offlineDevices.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text(
+                'Offline Devices',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ...offlineDevices.map((device) {
+            Icon deviceIcon;
+
+            // Determine the icon based on the device type
+            if (device.type == "Smartphone") {
+              deviceIcon = const Icon(Icons.smartphone, color: Colors.red);
+            } else if (device.type == "Laptop") {
+              deviceIcon = const Icon(Icons.laptop, color: Colors.red);
+            } else if (device.type == "Smart Display") {
+              deviceIcon = const Icon(Icons.smart_toy, color: Colors.red);
+            } else if (device.type == "Smart TV") {
+              deviceIcon = const Icon(Icons.tv, color: Colors.red);
+            } else if (device.type == "Wearable") {
+              deviceIcon = const Icon(Icons.watch, color: Colors.red);
+            } else if (device.type == "Router") {
+              deviceIcon = const Icon(Icons.router, color: Colors.red);
+            } else {
+              // For unrecognized devices
+              deviceIcon = const Icon(Icons.help, color: Colors.red);
+            }
+
+            return ListTile(
+              leading: deviceIcon,
+              title: Text(device.name),
+              subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
+              isThreeLine: true,
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeviceDetailPage(device: device),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ],
       ),
-    ...offlineDevices.map((device) => ListTile(
-          leading: device.type == "Unrecognized"
-              ? Icon(
-                  Icons.help,
-                  color: Colors.red,
-                )
-              : Icon(
-                  Icons.wifi_off,
-                  color: Colors.red,
-                ),
-          title: Text(device.name),
-          subtitle: Text('${device.type}\nIP: ${device.ipAddress}\nMAC: ${device.macAddress}'),
-          isThreeLine: true,
-          trailing: const Icon(Icons.arrow_forward_ios),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DeviceDetailPage(device: device),
-              ),
-            );
-          },
-        )),
-  ],
-)
     );
   }
 }
