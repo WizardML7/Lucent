@@ -595,8 +595,21 @@ class ResultsPage extends StatelessWidget {
 // #################################################
 
 
-class ResultsGraphPage extends StatelessWidget {
+class ResultsGraphPage extends StatefulWidget {
   const ResultsGraphPage({super.key});
+
+  @override
+  _ResultsGraphPageState createState() => _ResultsGraphPageState();
+  
+}
+
+class _ResultsGraphPageState extends State<ResultsGraphPage> {
+  final Random random = Random();
+  // We will store the position of each device here
+  Map<String, Offset> devicePositions = {};
+  Map<String, Offset> initialPositions = {};  // Store initial positions for dragging
+  String? selectedDevice; // Track currently selected device (for tapping)
+  Offset? dragStartPosition; // Store the starting position for drag
 
   @override
   Widget build(BuildContext context) {
@@ -608,19 +621,54 @@ class ResultsGraphPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Center(
           child: Flow(
-            delegate: DeviceFlowDelegate(),
+            delegate: DeviceFlowDelegate(devicePositions: devicePositions),
             children: mockDevices.map((device) {
+              // Set initial position if not yet set
+              if (!devicePositions.containsKey(device.name)) {
+                devicePositions[device.name] = Offset(
+                  random.nextDouble() * 300, // Random initial x position
+                  random.nextDouble() * 300, // Random initial y position
+                );
+                initialPositions[device.name] = devicePositions[device.name]!;
+              }
+
               // Determine the icon based on the device type
               Icon deviceIcon = _getDeviceIcon(device.type, isOnline: device.isOnline);
 
               return GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DeviceDetailPage(device: device),
-                    ),
-                  );
+                  if (selectedDevice != device.name) {
+                    setState(() {
+                      selectedDevice = device.name;
+                    });
+                    // Navigate to device details page when tapped
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DeviceDetailPage(device: device),
+                      ),
+                    );
+                  }
+                },
+                onPanStart: (details) {
+                  // Store initial position when the drag starts
+                  dragStartPosition = details.localPosition;
+                },
+                onPanUpdate: (details) {
+                  // Update the position based on the drag movement
+                  setState(() {
+                    if (dragStartPosition != null) {
+                      devicePositions[device.name] = initialPositions[device.name]! +
+                          (details.localPosition - dragStartPosition!);
+                    }
+                  });
+                },
+                onPanEnd: (details) {
+                  // Optionally, store the new position after the drag ends
+                  setState(() {
+                    initialPositions[device.name] = devicePositions[device.name]!;
+                    dragStartPosition = null;
+                  });
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -667,25 +715,29 @@ class ResultsGraphPage extends StatelessWidget {
 
 // Custom FlowDelegate to position device icons
 class DeviceFlowDelegate extends FlowDelegate {
-  final Random random = Random();
+  final Map<String, Offset> devicePositions;
+  DeviceFlowDelegate({required this.devicePositions});
 
   @override
   void paintChildren(FlowPaintingContext context) {
     for (int i = 0; i < context.childCount; i++) {
-      // Generate random positions for each child within the available space
-      double x = random.nextDouble() * (context.size.width - 50);
-      double y = random.nextDouble() * (context.size.height - 50);
+      final device = mockDevices[i];
+      final position = devicePositions[device.name]!;
 
       context.paintChild(
         i,
-        transform: Matrix4.translationValues(x, y, 0),
+        transform: Matrix4.translationValues(position.dx, position.dy, 0),
       );
     }
   }
 
   @override
-  bool shouldRepaint(covariant FlowDelegate oldDelegate) => false;
+  bool shouldRepaint(covariant FlowDelegate oldDelegate) => true;
 }
+
+
+
+// ###################################
 
 class DeviceDetailPage extends StatefulWidget {
   final Device device;
