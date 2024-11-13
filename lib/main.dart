@@ -600,14 +600,12 @@ class ResultsGraphPage extends StatefulWidget {
 
   @override
   _ResultsGraphPageState createState() => _ResultsGraphPageState();
-  
 }
 
 class _ResultsGraphPageState extends State<ResultsGraphPage> {
   final Random random = Random();
-  // We will store the position of each device here
   Map<String, Offset> devicePositions = {};
-  Map<String, Offset> initialPositions = {};  // Store initial positions for dragging
+  Map<String, Offset> initialPositions = {}; // Store initial positions for dragging
   String? selectedDevice; // Track currently selected device (for tapping)
   Offset? dragStartPosition; // Store the starting position for drag
 
@@ -619,71 +617,77 @@ class _ResultsGraphPageState extends State<ResultsGraphPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: Flow(
-            delegate: DeviceFlowDelegate(devicePositions: devicePositions),
-            children: mockDevices.map((device) {
-              // Set initial position if not yet set
-              if (!devicePositions.containsKey(device.name)) {
-                devicePositions[device.name] = Offset(
-                  random.nextDouble() * 300, // Random initial x position
-                  random.nextDouble() * 300, // Random initial y position
-                );
-                initialPositions[device.name] = devicePositions[device.name]!;
-              }
+        child: CustomPaint(
+          painter: GraphGridPainter(
+            gridColor: Colors.blueGrey,
+            gridSpacing: 30.0,
+          ),
+          child: Center(
+            child: Flow(
+              delegate: DeviceFlowDelegate(devicePositions: devicePositions),
+              children: mockDevices.map((device) {
+                // Set initial position if not yet set
+                if (!devicePositions.containsKey(device.name)) {
+                  devicePositions[device.name] = Offset(
+                    random.nextDouble() * 300, // Random initial x position
+                    random.nextDouble() * 300, // Random initial y position
+                  );
+                  initialPositions[device.name] = devicePositions[device.name]!;
+                }
 
-              // Determine the icon based on the device type
-              Icon deviceIcon = _getDeviceIcon(device.type, isOnline: device.isOnline);
+                // Determine the icon based on the device type
+                Icon deviceIcon = _getDeviceIcon(device.type, isOnline: device.isOnline);
 
-              return GestureDetector(
-                onTap: () {
-                  if (selectedDevice != device.name) {
-                    setState(() {
-                      selectedDevice = device.name;
-                    });
-                    // Navigate to device details page when tapped
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DeviceDetailPage(device: device),
-                      ),
-                    );
-                  }
-                },
-                onPanStart: (details) {
-                  // Store initial position when the drag starts
-                  dragStartPosition = details.localPosition;
-                },
-                onPanUpdate: (details) {
-                  // Update the position based on the drag movement
-                  setState(() {
-                    if (dragStartPosition != null) {
-                      devicePositions[device.name] = initialPositions[device.name]! +
-                          (details.localPosition - dragStartPosition!);
+                return GestureDetector(
+                  onTap: () {
+                    if (selectedDevice != device.name) {
+                      setState(() {
+                        selectedDevice = device.name;
+                      });
+                      // Navigate to device details page when tapped
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DeviceDetailPage(device: device),
+                        ),
+                      );
                     }
-                  });
-                },
-                onPanEnd: (details) {
-                  // Optionally, store the new position after the drag ends
-                  setState(() {
-                    initialPositions[device.name] = devicePositions[device.name]!;
-                    dragStartPosition = null;
-                  });
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    deviceIcon,
-                    const SizedBox(height: 5),
-                    Text(
-                      device.name,
-                      style: const TextStyle(fontSize: 12),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+                  },
+                  onPanStart: (details) {
+                    // Store initial position when the drag starts
+                    dragStartPosition = details.localPosition;
+                  },
+                  onPanUpdate: (details) {
+                    // Update the position based on the drag movement
+                    setState(() {
+                      if (dragStartPosition != null) {
+                        devicePositions[device.name] = initialPositions[device.name]! +
+                            (details.localPosition - dragStartPosition!);
+                      }
+                    });
+                  },
+                  onPanEnd: (details) {
+                    // Store the new position after the drag ends
+                    setState(() {
+                      initialPositions[device.name] = devicePositions[device.name]!;
+                      dragStartPosition = null;
+                    });
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      deviceIcon,
+                      const SizedBox(height: 5),
+                      Text(
+                        device.name,
+                        style: const TextStyle(fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
           ),
         ),
       ),
@@ -735,7 +739,34 @@ class DeviceFlowDelegate extends FlowDelegate {
   bool shouldRepaint(covariant FlowDelegate oldDelegate) => true;
 }
 
+//########
 
+class GraphGridPainter extends CustomPainter {
+  final Color gridColor;
+  final double gridSpacing;
+
+  GraphGridPainter({this.gridColor = Colors.grey, this.gridSpacing = 20.0});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = gridColor.withOpacity(0.2)
+      ..strokeWidth = 1.0;
+
+    // Draw horizontal grid lines
+    for (double y = 0; y < size.height; y += gridSpacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+
+    // Draw vertical grid lines
+    for (double x = 0; x < size.width; x += gridSpacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
 
 // ###################################
 
