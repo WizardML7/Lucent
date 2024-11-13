@@ -108,6 +108,8 @@ List<Device> mockDevices = [
   ),
 ];
 
+//$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
 class HomeWidget extends StatefulWidget {
   const HomeWidget({Key? key}) : super(key: key);
 
@@ -117,6 +119,8 @@ class HomeWidget extends StatefulWidget {
 
 class _HomeWidgetState extends State<HomeWidget> {
   bool _isGraphView = false;
+  bool isScanning = false; // Controls scanning state
+  bool scanComplete = false; // Controls visibility of results
 
   @override
   void initState() {
@@ -131,9 +135,24 @@ class _HomeWidgetState extends State<HomeWidget> {
     });
   }
 
+  // Mock scan method
+  void startMockScan() async {
+    setState(() {
+      isScanning = true;
+      scanComplete = false;
+    });
+
+    // Simulate a 3-second scan delay
+    await Future.delayed(const Duration(seconds: 3));
+
+    setState(() {
+      isScanning = false;
+      scanComplete = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    _loadViewPreference();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -199,14 +218,14 @@ class _HomeWidgetState extends State<HomeWidget> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-           ClipOval(
-            child: Image.asset(
-              'assets/images/logo.png',
-              height: 100,  // Adjust height to your needs
-              width: 100,   // Adjust width to your needs
-              fit: BoxFit.cover,  // Ensures the image fits the circular frame
+            ClipOval(
+              child: Image.asset(
+                'assets/images/logo.png',
+                height: 100,
+                width: 100,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
             const SizedBox(height: 20),
             const Text(
               'Welcome to Lucent!',
@@ -217,6 +236,44 @@ class _HomeWidgetState extends State<HomeWidget> {
               'Discover devices in your network.',
               style: TextStyle(fontSize: 18),
             ),
+            const SizedBox(height: 20),
+            if (isScanning)
+              const CircularProgressIndicator() // Show loading indicator during scan
+            else if (!scanComplete)
+              ElevatedButton(
+                onPressed: startMockScan,
+                child: const Text('Scan for Devices'),
+              )
+            else
+              const Text('Scan complete! Devices found.'),
+            const SizedBox(height: 20),
+            if (scanComplete)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ResultsPage()),
+                      );
+                    },
+                    child: const Text('View List'),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ResultsGraphPage()),
+                      );
+                    },
+                    child: const Text('View Graph'),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -232,32 +289,40 @@ class _HomeWidgetState extends State<HomeWidget> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ScanOptionsPage()),
+                  MaterialPageRoute(
+                      builder: (context) => const ScanOptionsPage()),
                 );
               },
             ),
             IconButton(
               icon: const Icon(Icons.search),
               tooltip: 'Scan',
-              onPressed: () {
-                // TODO: Start scanning process
-              },
+              onPressed: startMockScan,
             ),
             IconButton(
               icon: const Icon(Icons.list),
               tooltip: 'Results',
               onPressed: () async {
                 _loadViewPreference();
-                // Navigate to the appropriate ResultsPage based on preference
-                if (_isGraphView) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ResultsGraphPage()),
-                  );
+                if (scanComplete) {
+                  if (_isGraphView) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ResultsGraphPage()),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ResultsPage()),
+                    );
+                  }
                 } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ResultsPage()),
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Please run a scan before viewing results.')),
                   );
                 }
               },
@@ -269,7 +334,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 }
 
-
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
 //Scan options widget
 class ScanOptionsPage extends StatefulWidget {
