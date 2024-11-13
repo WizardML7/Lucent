@@ -117,15 +117,39 @@ class HomeWidget extends StatefulWidget {
   _HomeWidgetState createState() => _HomeWidgetState();
 }
 
-class _HomeWidgetState extends State<HomeWidget> {
+class _HomeWidgetState extends State<HomeWidget>
+    with SingleTickerProviderStateMixin {
   bool _isGraphView = false;
-  bool isScanning = false; // Controls scanning state
-  bool scanComplete = false; // Controls visibility of results
+  bool isScanning = false;
+  bool scanComplete = false;
+
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
     _loadViewPreference();
+
+    // Initialize AnimationController
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    // Define Scale Animation using Tween
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _animationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _animationController.reverse(); // Return to original size
+      }
+    });
   }
 
   void _loadViewPreference() async {
@@ -135,14 +159,18 @@ class _HomeWidgetState extends State<HomeWidget> {
     });
   }
 
-  // Mock scan method
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   void startMockScan() async {
     setState(() {
       isScanning = true;
       scanComplete = false;
     });
 
-    // Simulate a 3-second scan delay
     await Future.delayed(const Duration(seconds: 3));
 
     setState(() {
@@ -160,9 +188,9 @@ class _HomeWidgetState extends State<HomeWidget> {
         leading: Builder(
           builder: (context) {
             return IconButton(
-              icon: const Icon(Icons.menu), // Hamburger menu icon
+              icon: const Icon(Icons.menu),
               onPressed: () {
-                Scaffold.of(context).openDrawer(); // Open drawer menu
+                Scaffold.of(context).openDrawer();
               },
             );
           },
@@ -187,9 +215,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             ListTile(
               leading: const Icon(Icons.help),
               title: const Text('Help and Support'),
-              onTap: () {
-                // TODO: Navigate to Help and Support screen
-              },
+              onTap: () {},
             ),
             ListTile(
               leading: const Icon(Icons.info),
@@ -214,68 +240,56 @@ class _HomeWidgetState extends State<HomeWidget> {
           ],
         ),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            ClipOval(
-              child: Image.asset(
-                'assets/images/logo.png',
-                height: 100,
-                width: 100,
-                fit: BoxFit.cover,
+      body: Stack(
+        children: [
+          Center(
+            child: GestureDetector(
+              onTapDown: (_) {
+                if (!isScanning) _animationController.forward();
+              },
+              onTapUp: (_) {
+                if (!isScanning) {
+                  _animationController.reverse();
+                  startMockScan();
+                }
+              },
+              child: AnimatedBuilder(
+                animation: _scaleAnimation,
+                builder: (context, child) {
+                  return InkWell(
+                    splashColor: Colors.blue.withOpacity(0.4), // Ripple color
+                    highlightColor: Colors.transparent, // No highlight
+                    onTap: () {}, // Empty onTap to prevent accidental actions
+                    child: ClipOval(
+                      child: Container(
+                        height: 250 * _scaleAnimation.value, // Animate the logo size
+                        width: 250 * _scaleAnimation.value,
+                        color: Colors.transparent, // No color, just to size the container
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Welcome to Lucent!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Discover devices in your network.',
-              style: TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 20),
-            if (isScanning)
-              const CircularProgressIndicator() // Show loading indicator during scan
-            else if (!scanComplete)
-              ElevatedButton(
-                onPressed: startMockScan,
-                child: const Text('Scan for Devices'),
-              )
-            else
-              const Text('Scan complete! Devices found.'),
-            const SizedBox(height: 20),
-            if (scanComplete)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ResultsPage()),
-                      );
-                    },
-                    child: const Text('View List'),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ResultsGraphPage()),
-                      );
-                    },
-                    child: const Text('View Graph'),
-                  ),
-                ],
+          ),
+          Positioned.fill(
+            child: InkWell(
+              onTap: () {
+                if (!isScanning) {
+                  _animationController.forward();
+                  startMockScan();
+                }
+              },
+              child: Container(
+                color: Colors.transparent, // Full screen tapable area
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
@@ -305,24 +319,12 @@ class _HomeWidgetState extends State<HomeWidget> {
               onPressed: () async {
                 _loadViewPreference();
                 if (scanComplete) {
-                  if (_isGraphView) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ResultsGraphPage()),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ResultsPage()),
-                    );
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content:
-                            Text('Please run a scan before viewing results.')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          _isGraphView ? ResultsGraphPage() : ResultsPage(),
+                    ),
                   );
                 }
               },
@@ -333,6 +335,9 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 }
+
+
+
 
 // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
