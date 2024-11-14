@@ -26,8 +26,10 @@ class Device {
   String name;
   final String ipAddress;
   final String macAddress;
-  final String type; // Example: "Smartphone", "Smart TV", "Laptop"
+  final String type;
   final bool isOnline;
+  final bool isBluetoothDevice;
+  final bool isNetworkDevice;
 
   Device({
     required this.name,
@@ -35,6 +37,8 @@ class Device {
     required this.macAddress,
     required this.type,
     required this.isOnline,
+    this.isBluetoothDevice = false,
+    this.isNetworkDevice = true, // Default to true for network devices
   });
 }
 
@@ -45,6 +49,8 @@ List<Device> mockDevices = [
     macAddress: "00:14:22:01:23:45",
     type: "Smartphone",
     isOnline: true,
+    isBluetoothDevice: true,
+    isNetworkDevice: true,
   ),
   Device(
     name: "Dell XPS 13",
@@ -52,6 +58,8 @@ List<Device> mockDevices = [
     macAddress: "00:16:36:12:56:78",
     type: "Laptop",
     isOnline: true,
+    isBluetoothDevice: true,
+    isNetworkDevice: true,
   ),
   Device(
     name: "Google Nest Hub",
@@ -59,6 +67,8 @@ List<Device> mockDevices = [
     macAddress: "00:1A:11:FA:67:89",
     type: "Smart Display",
     isOnline: false,
+    isBluetoothDevice: false,
+    isNetworkDevice: true,
   ),
   Device(
     name: "Sony Bravia TV",
@@ -66,6 +76,8 @@ List<Device> mockDevices = [
     macAddress: "00:22:68:AB:CD:EF",
     type: "Smart TV",
     isOnline: true,
+    isBluetoothDevice: false,
+    isNetworkDevice: true,
   ),
   Device(
     name: "Apple Watch",
@@ -73,40 +85,63 @@ List<Device> mockDevices = [
     macAddress: "00:25:96:89:AB:12",
     type: "Wearable",
     isOnline: false,
+    isBluetoothDevice: true,
+    isNetworkDevice: false, // Not typically a network device
   ),
-  // New router device
   Device(
     name: "Netgear Nighthawk Router",
     ipAddress: "192.168.1.1",
     macAddress: "00:1B:44:11:3A:B7",
     type: "Router",
     isOnline: true,
+    isBluetoothDevice: false,
+    isNetworkDevice: true,
   ),
-  // New smartphone device
   Device(
     name: "iPhone 14 Pro",
     ipAddress: "192.168.1.7",
     macAddress: "00:1E:DC:9A:3B:65",
     type: "Smartphone",
     isOnline: true,
+    isBluetoothDevice: true,
+    isNetworkDevice: true,
   ),
-  // New laptop device
   Device(
     name: "MacBook Air M2",
     ipAddress: "192.168.1.8",
     macAddress: "00:17:88:6A:4B:33",
     type: "Laptop",
     isOnline: false,
+    isBluetoothDevice: true,
+    isNetworkDevice: true,
   ),
-  // Unrecognized device
   Device(
     name: "Unknown Device",
     ipAddress: "192.168.1.9",
     macAddress: "00:99:23:AF:54:78",
     type: "Unrecognized",
     isOnline: true,
+    isBluetoothDevice: false,
+    isNetworkDevice: true,
   ),
 ];
+
+// List<Device> _filterDevicesByScanMode(String scanMode, List<Device> devices) {
+//   switch (scanMode) {
+//     case 'Bluetooth-Only Scan':
+//       return devices.where((device) => device.isBluetoothDevice).toList();
+//     case 'Network-Only Scan':
+//       return devices.where((device) => device.isNetworkDevice).toList();
+//     case 'Hybrid Scan':
+//       return devices
+//           .where((device) => device.isBluetoothDevice || device.isNetworkDevice)
+//           .toList();
+//     case 'Quick Scan':
+//     case 'Deep Scan':
+//     default:
+//       return devices; // Show all devices
+//   }
+// }
 
 //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -309,11 +344,6 @@ class _HomeWidgetState extends State<HomeWidget>
               },
             ),
             IconButton(
-              icon: const Icon(Icons.search),
-              tooltip: 'Scan',
-              onPressed: startMockScan,
-            ),
-            IconButton(
               icon: const Icon(Icons.list),
               tooltip: 'Results',
               onPressed: () async {
@@ -341,7 +371,6 @@ class _HomeWidgetState extends State<HomeWidget>
 
 // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-//Scan options widget
 class ScanOptionsPage extends StatefulWidget {
   const ScanOptionsPage({super.key});
 
@@ -350,101 +379,121 @@ class ScanOptionsPage extends StatefulWidget {
 }
 
 class _ScanOptionsPageState extends State<ScanOptionsPage> {
-  // State variables for the options
-  String _scanMode = 'Quick Scan'; // Default scan mode
-  double _scanRange = 50.0; // Default scan range (e.g., percentage)
-  double _scanDuration = 30.0; // Default scan duration in seconds
-  bool _notificationSound = true; // Default notification sound setting
+  String _scanMode = 'Quick Scan';
+  late Future<void> _loadingFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadingFuture = _loadScanMode();
+  }
+
+  Future<void> _loadScanMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedMode = prefs.getString('scanMode');
+      setState(() {
+        _scanMode = savedMode ?? 'Quick Scan';
+      });
+    } catch (e) {
+      print('Error loading scan mode: $e');
+    }
+  }
+
+  Future<void> _saveScanMode(String mode) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('scanMode', mode);
+    } catch (e) {
+      print('Error saving scan mode: $e');
+    }
+  }
+
+  void _startScan() {
+    Navigator.pop(context); // Close the ScanOptionsPage and return to the previous page
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Starting $_scanMode...'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    // Here you can trigger the scan logic based on the selected scan mode
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Options'),
+        title: const Text('Select Scan Mode'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text(
-              'Scan Mode',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            DropdownButton<String>(
-              value: _scanMode,
-              items: const [
-                DropdownMenuItem(value: 'Quick Scan', child: Text('Quick Scan')),
-                DropdownMenuItem(value: 'Deep Scan', child: Text('Deep Scan')),
-                DropdownMenuItem(value: 'Bluetooth-Only Scan', child: Text('Bluetooth-Only Scan')),
-                DropdownMenuItem(value: 'Network-Only Scan', child: Text('Network-Only Scan')),
-                DropdownMenuItem(value: 'Hybrid Scan', child: Text('Hybrid Scan')),
-              ],
-              onChanged: (String? newMode) {
-                setState(() {
-                  _scanMode = newMode!;
-                });
-                // Unfocus the dropdown after selection to reset hover/focus state
-                FocusScope.of(context).unfocus();
-              },
-            ),
-            const SizedBox(height: 20),
-
-            const Text(
-              'Scan Range',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Slider(
-              value: _scanRange,
-              min: 0,
-              max: 100,
-              divisions: 5,
-              label: _scanRange.round().toString(),
-              onChanged: (double newRange) {
-                setState(() {
-                  _scanRange = newRange;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-
-            const Text(
-              'Scan Duration (seconds)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Slider(
-              value: _scanDuration,
-              min: 10,
-              max: 300,
-              divisions: 29,
-              label: _scanDuration.round().toString(),
-              onChanged: (double newDuration) {
-                setState(() {
-                  _scanDuration = newDuration;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-
-            const Text(
-              'Notification Sound',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SwitchListTile(
-              title: const Text('Enable Sound Alerts'),
-              value: _notificationSound,
-              onChanged: (bool newValue) {
-                setState(() {
-                  _notificationSound = newValue;
-                });
-              },
-            ),
-          ],
-        ),
+      body: FutureBuilder<void>(
+        future: _loadingFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return const Center(child: Text('Failed to load scan options'));
+          } else {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Select Scan Type',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromARGB(255, 129, 71, 104),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    value: _scanMode,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    style: const TextStyle(fontSize: 18,
+                    color: Color.fromARGB(255, 129, 71, 104)),
+                    items: const [
+                      DropdownMenuItem(value: 'Quick Scan', child: Text('Quick Scan')),
+                      DropdownMenuItem(value: 'Deep Scan', child: Text('Deep Scan')),
+                      DropdownMenuItem(value: 'Bluetooth-Only Scan', child: Text('Bluetooth-Only Scan')),
+                      DropdownMenuItem(value: 'Network-Only Scan', child: Text('Network-Only Scan')),
+                      DropdownMenuItem(value: 'Hybrid Scan', child: Text('Hybrid Scan')),
+                    ],
+                    onChanged: (String? newMode) {
+                      if (newMode != null) {
+                        setState(() {
+                          _scanMode = newMode;
+                          _saveScanMode(newMode);
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: _startScan,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      textStyle: const TextStyle(fontSize: 18),
+                    ),
+                    child: const Text('Start Scan'),
+                  ),
+                ],
+              ),
+            );
+          }
+        },
       ),
     );
   }
 }
+
+
 
 
 //Settings widget
@@ -566,15 +615,61 @@ class _SettingsPageState extends State<SettingsPage> {
 }
 
 
-class ResultsPage extends StatelessWidget {
+class ResultsPage extends StatefulWidget {
   const ResultsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Separating devices into online and offline lists
-    List<Device> onlineDevices = mockDevices.where((device) => device.isOnline).toList();
-    List<Device> offlineDevices = mockDevices.where((device) => !device.isOnline).toList();
+  State<ResultsPage> createState() => _ResultsPageState();
+}
 
+class _ResultsPageState extends State<ResultsPage> {
+  //##
+  String _scanMode = 'Quick Scan';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadScanMode();
+  }
+
+  Future<void> _loadScanMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _scanMode = prefs.getString('scanMode') ?? 'Quick Scan';
+    });
+  }
+
+  List<Device> _filterDevicesByScanMode(List<Device> devices) {
+    switch (_scanMode) {
+      case 'Bluetooth-Only Scan':
+        return devices.where((device) => device.isBluetoothDevice).toList();
+      case 'Network-Only Scan':
+        return devices.where((device) => device.isNetworkDevice).toList();
+      case 'Hybrid Scan':
+        // Filter for devices that are either Bluetooth or Network
+        return devices
+            .where((device) => device.isBluetoothDevice || device.isNetworkDevice)
+            .toList();
+      case 'Quick Scan':
+      case 'Deep Scan':
+      default:
+        // Show all devices for Quick and Deep Scan
+        return devices;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Filter devices based on the selected scan mode
+    List<Device> filteredDevices = _filterDevicesByScanMode(mockDevices);
+
+    // Separating devices into online and offline lists
+    List<Device> onlineDevices =
+        filteredDevices.where((device) => device.isOnline).toList();
+    List<Device> offlineDevices =
+        filteredDevices.where((device) => !device.isOnline).toList();
+
+    //##
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan Results'),
@@ -592,13 +687,12 @@ class ResultsPage extends StatelessWidget {
             ),
           // List of Online Devices
           ...onlineDevices.map((device) {
-            // Determine the icon based on the device type
             Icon deviceIcon = _getDeviceIcon(device.type, isOnline: true);
             return _buildDeviceTile(context, device, deviceIcon);
           }).toList(),
-          
+
           const Divider(),
-          
+
           // Offline Devices Section
           if (offlineDevices.isNotEmpty)
             const Padding(
@@ -662,6 +756,7 @@ class ResultsPage extends StatelessWidget {
   }
 }
 
+
 // #################################################
 
 
@@ -673,14 +768,59 @@ class ResultsGraphPage extends StatefulWidget {
 }
 
 class _ResultsGraphPageState extends State<ResultsGraphPage> {
+  //##
   final Random random = Random();
   Map<String, Offset> devicePositions = {};
   Map<String, Offset> initialPositions = {}; // Store initial positions for dragging
   String? selectedDevice; // Track currently selected device (for tapping)
   Offset? dragStartPosition; // Store the starting position for drag
+  String _scanMode = 'Quick Scan'; // Default scan mode
+  //##
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadScanMode();
+  }
+
+  Future<void> _loadScanMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _scanMode = prefs.getString('scanMode') ?? 'Quick Scan';
+    });
+  }
+
+  List<Device> _filterDevicesByScanMode(List<Device> devices) {
+    switch (_scanMode) {
+      case 'Bluetooth-Only Scan':
+        return devices.where((device) => device.isBluetoothDevice).toList();
+      case 'Network-Only Scan':
+        return devices.where((device) => device.isNetworkDevice).toList();
+      case 'Hybrid Scan':
+        // Filter for devices that are either Bluetooth or Network
+        return devices
+            .where((device) => device.isBluetoothDevice || device.isNetworkDevice)
+            .toList();
+      case 'Quick Scan':
+      case 'Deep Scan':
+      default:
+        // Show all devices for Quick and Deep Scan
+        return devices;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Filter devices based on the selected scan mode
+    List<Device> filteredDevices = _filterDevicesByScanMode(mockDevices);
+
+    // Separating devices into online and offline lists
+    List<Device> onlineDevices =
+        filteredDevices.where((device) => device.isOnline).toList();
+    List<Device> offlineDevices =
+        filteredDevices.where((device) => !device.isOnline).toList();
+
+    //##
     return Scaffold(
       appBar: AppBar(
         title: const Text('Graph View of Devices'),
@@ -695,7 +835,7 @@ class _ResultsGraphPageState extends State<ResultsGraphPage> {
           child: Center(
             child: Flow(
               delegate: DeviceFlowDelegate(devicePositions: devicePositions),
-              children: mockDevices.map((device) {
+              children: filteredDevices.map((device) {
                 // Set initial position if not yet set
                 if (!devicePositions.containsKey(device.name)) {
                   devicePositions[device.name] = Offset(
@@ -786,6 +926,7 @@ class _ResultsGraphPageState extends State<ResultsGraphPage> {
     }
   }
 }
+
 
 // Custom FlowDelegate to position device icons
 class DeviceFlowDelegate extends FlowDelegate {
